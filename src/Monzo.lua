@@ -4,7 +4,7 @@
 -- Username: Monzo API Key
 -- Password: Monzo API Secret
 --
--- Copyright (c) 2017 @PvF
+-- Copyright (c) 2018 @PvF
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ TODO
 WebBanking{
   version = 0.90,
   url = "https://api.monzo.com",
-  services= { "Monzo Account" },
+  services= { "Monzo" },
   description = "Sync via Monzo's API",
 }
 
@@ -47,7 +47,7 @@ local refreshToken
 local userId
 
 function SupportsBank (protocol, bankCode)
-  return protocol == ProtocolWebBanking and bankCode == "Monzo Account"
+  return protocol == ProtocolWebBanking and bankCode == "Monzo"
 end
 
 -- Supposed to login and make sure credentials are correct
@@ -224,15 +224,17 @@ function nameForTransaction(transaction)
 end
 
 function apiDateStrToTimestamp(dateStr)
-	print(dateStr)
 	if string.len(dateStr) == 0 then
 		return nil
 	end
-  local yearStr, monthStr, dayStr = string.match(dateStr, "(%d%d%d%d)-(%d%d)-(%d%d)")
+  local yearStr, monthStr, dayStr, hourStr, minStr, secStr = string.match(dateStr, "(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)")
   return os.time({
       year = tonumber(yearStr),
       month = tonumber(monthStr),
-      day = tonumber(dayStr)
+      day = tonumber(dayStr),
+      hour = tonumber(hourStr),
+      min = tonumber(minStr),
+      sec = tonumber(secStr)
   })
 end
 
@@ -268,13 +270,10 @@ function queryPrivate(method, params)
 end
 
 function httpBuildQuery(params)
-	print("Build params from ")
-	RecPrint(params)
   local str = ''
   for key, value in pairs(params) do
     str = str .. key .. "=" .. value .. "&"
   end
-	print(str)
   str = str.sub(str, 1, -2)
 	return str
 end
