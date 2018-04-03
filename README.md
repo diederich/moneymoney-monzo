@@ -1,5 +1,7 @@
 Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [MoneyMoney.app](http://moneymoney-app.com)
 
+![MoneyMoney screenshot with Monzo accounts](screenshots/monzo-accounts.png)
+
 Requirements
 ----------------
 
