@@ -27,7 +27,6 @@
 --[[
 TODO
 * Implement OAuth2 scheme / write documentation about auth-token
-* Implement Paging (instead of fetching all transactions every time)
 * Add Monzo's `pods`
 -- ]]
 
@@ -120,7 +119,6 @@ function accountTypeForMonzoAccountType(monzoAccountString)
 end
 
 -- Refreshes the account and retrieves transactions
--- TODO: support the `since` argument via paging backwards in the monzo API
 function RefreshAccount (account, since)
 	MM.printStatus("Refreshing account " .. account.name)
 
@@ -129,12 +127,16 @@ function RefreshAccount (account, since)
 	}
 	params["expand[]"] = "merchant"
 	if not (since == nil) then
---		params["since"] = 
+		params["since"] = luaDateToMonzoDate(since)
+	end
+	
+	local transactionsResponse = queryPrivate("transactions", params)
+	if nil == transactionsResponse.transactions then
+		return transactionsResponse.message
 	end
 	
 	local t = {} -- List of transactions to return
-	local monzoTransactions = queryPrivate("transactions", params).transactions
-  for index, monzoTransaction in pairs(monzoTransactions) do
+  for index, monzoTransaction in pairs(transactionsResponse.transactions) do
 		local transaction = transactionForMonzoTransaction(monzoTransaction)
 		if transaction == nil then
 			print("Skipped transaction: " .. monzoTransaction.description)
@@ -232,6 +234,12 @@ function apiDateStrToTimestamp(dateStr)
       month = tonumber(monthStr),
       day = tonumber(dayStr)
   })
+end
+
+function luaDateToMonzoDate(date)
+	-- Mind the exlamation mark which produces UTC
+	local dateString = os.date("!%Y-%m-%dT%XZ", date)
+	return dateString
 end
 
 function EndSession ()
