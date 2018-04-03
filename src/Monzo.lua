@@ -127,6 +127,9 @@ function RefreshAccount (account, since)
 	}
 	params["expand[]"] = "merchant"
 	if not (since == nil) then
+		-- This is a littlebit odd:
+		-- On first fetch it seems that MoneyMoney specifies one year from now,
+		-- even though Monzo has more data. Ignore this on first (?!) run?
 		params["since"] = luaDateToMonzoDate(since)
 	end
 	
