@@ -41,7 +41,7 @@ WebBanking{
 local clientId = "..."
 -- The OAuth2 tokens
 local accessToken
-local refreshToken
+local refreshToken -- currently not used
 
 -- Returned by Monzo API
 local userId
@@ -53,10 +53,12 @@ end
 -- Supposed to login and make sure credentials are correct
 function InitializeSession (protocol, bankCode, username, username2, password, username3)
 	print("InitializeSession - " .. protocol .. " " .. bankCode)
-
 	-- Monzo's authentication uses OAuth2 and want a redirect to their website
 	-- see https://monzo.com/docs/#acquire-an-access-token for details
-	-- so for now we use the predefined accessToken given via the playground passed via password
+	-- 
+	-- https://gu5soke45j.execute-api.eu-central-1.amazonaws.com/beta/moneymoney-monzo-oauth/init
+	-- is a little helper to get an access & refresh token for use with the plugin
+	-- (This needs manual adding of Monzo user ids to the app for now. Just let me know...)
   accessToken = password
 
 	local whoami = queryPrivate("ping/whoami")

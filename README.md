@@ -5,9 +5,15 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
 Requirements
 ----------------
 
-Since there's no official/stable Monzo API right now, this is still kind of a hack, but works:
-* ...
+* [Monzo Account](https://monzo.com)
+* [MoneyMoney.app](http://moneymoney-app.com)
+* Access Token: The plugin needs an access token for the Monzo API. Given this is still in beta, it's kind of  a hack but works. See [Add account] for details.
 
+To Dos
+---------
+
+* Improve access token query / login behaviour
+* use refresh token for, well, refreshing the access token
 
 Installation
 ------------
@@ -31,7 +37,20 @@ Installation
 
 Add account
 -------------------
+
 Once installed, a Monzo account can be added via *Konto* > *Konto hinzufügen*.
+Use the access token for the password (username is not used).
+
+Aquire access token via Monzo website:
+
+* Go to their developer website
+* Login via link sent by email
+* copy the access token from the playground
+
+Aquire access token via Webapp (Monzo API beta program - somewhat unfinished):
+
+* let me know your Monzo user ID, it needs to be added to the app
+* I created a simple helper to extract the tokens via AWS Labmdas. They're never stored, but only displayed in your browser and can then be copied to the extension: https://gu5soke45j.execute-api.eu-central-1.amazonaws.com/beta/moneymoney-monzo-oauth/init
 
 
 Feedback
