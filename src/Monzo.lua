@@ -26,19 +26,18 @@
 
 --[[
 TODO
-* Implement OAuth2 scheme / write documentation about auth-token
 * Add Monzo's `pods`
 -- ]]
 
 WebBanking{
-  version = 0.90,
+  version = 0.91,
   url = "https://api.monzo.com",
   services= { "Monzo" },
   description = "Sync via Monzo's API",
 }
 
--- This extension's clientID. Registered with Monzo
-local clientId = "..."
+-- This extension's clientID. Registered with Monzo.
+local clientId = "oauth2client_00009VIFzMMhiCGE1JcLkf"
 
 -- User email address.
 local email
