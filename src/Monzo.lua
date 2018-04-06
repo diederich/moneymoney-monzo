@@ -39,37 +39,68 @@ WebBanking{
 
 -- This extension's clientID. Registered with Monzo
 local clientId = "..."
--- The OAuth2 tokens
-local accessToken
-local refreshToken -- currently not used
 
--- Returned by Monzo API
-local userId
+-- User email address.
+local email
+
+-- HTTPS connection object.
+local connection
 
 function SupportsBank (protocol, bankCode)
   return protocol == ProtocolWebBanking and bankCode == "Monzo"
 end
 
--- Supposed to login and make sure credentials are correct
-function InitializeSession (protocol, bankCode, username, username2, password, username3)
-	print("InitializeSession - " .. protocol .. " " .. bankCode)
-	-- Monzo's authentication uses OAuth2 and want a redirect to their website
-	-- see https://monzo.com/docs/#acquire-an-access-token for details
-	-- 
-	-- https://gu5soke45j.execute-api.eu-central-1.amazonaws.com/beta/moneymoney-monzo-oauth/init
-	-- is a little helper to get an access & refresh token for use with the plugin
-	-- (This needs manual adding of Monzo user ids to the app for now. Just let me know...)
-  accessToken = password
+function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
+  -- Monzo's authentication uses OAuth2 and want a redirect to their website
+  -- see https://monzo.com/docs/#acquire-an-access-token for details
+  if step == 1 then
 
-	local whoami = queryPrivate("ping/whoami")
-	local authenticated = whoami["authenticated"] or false
-	if not authenticated then 
-		return whoami["error_description"] or LoginFailed
-	else
-		clientId = whoami["client_id"]
-		userId = whoami["user_id"]
-		return nil
-	end
+    -- Store e-mail address for later use.
+    email = credentials[1]
+
+    -- Create HTTPS connection object.
+    connection = Connection()
+
+    -- Check if access token is still valid. 
+    local authenticated = false
+    if LocalStorage.accessToken and os.time() < LocalStorage.expiresAt then
+      print("Validating access token.")
+      local whoami = queryPrivate("ping/whoami")
+      authenticated = whoami and whoami["authenticated"]
+    end
+
+    -- Obtain OAuth 2.0 authorization code from web browser.
+    if not authenticated then
+      return {
+        title     = "Monzo API",
+        challenge = "https://auth.monzo.com/" ..
+                    "?client_id=" .. MM.urlencode(clientId) ..
+                    "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
+                    "&response_type=code"
+        -- The URL argument "state" will be automatically inserted by MoneyMoney.
+      }
+    end
+  end
+
+  if step == 2 then
+    local authorizationCode = credentials[1]
+
+    -- Exchange authorization code for access token.
+    print("Requesting OAuth access token with authorization code.")
+    local postContent = "grant_type=authorization_code" ..
+                        "&client_id=" .. MM.urlencode(clientId) ..
+                        "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
+                        "&code=" .. MM.urlencode(authorizationCode)
+    local postContentType = "application/x-www-form-urlencoded"
+    local json = JSON(connection:request("POST", "https://api.monzo.com/oauth2/token", postContent, postContentType)):dictionary()
+
+    -- Store access token and expiration date.
+    LocalStorage.accessToken = json["access_token"]
+    LocalStorage.expiresAt = os.time() + json["expires_in"]
+
+    -- Not really necessary, but allows MoneyMoney to suggest the right country in the account settings as long as Monzo has no IBAN.
+    LocalStorage.country = "gb"
+  end
 end
 
 function ListAccounts (knownAccounts)
@@ -82,9 +113,9 @@ function ListAccounts (knownAccounts)
 			-- String owner: Name des Kontoinhabers
 			owner = account.description,
 			-- String accountNumber: Kontonummer
-			accountNumber = account.id, -- This is not really good, is it?
+			accountNumber = email,
 			-- String subAccount: Unterkontomerkmal
-			subAccount = account.type,
+			subAccount = account.id,
 			-- Boolean portfolio: true für Depots und false für alle anderen Konten
 			portfolio = false,
 			-- String bankCode: Bankleitzahl
@@ -125,7 +156,7 @@ function RefreshAccount (account, since)
 	MM.printStatus("Refreshing account " .. account.name)
 
 	local params = {
-		account_id = account.accountNumber
+		account_id = account.subAccount
 	}
 	params["expand[]"] = "merchant"
 	if not (since == nil) then
@@ -150,7 +181,7 @@ function RefreshAccount (account, since)
 		end
   end
 	
-	local monzoBalance = queryPrivate("balance", { account_id = account.accountNumber })
+	local monzoBalance = queryPrivate("balance", { account_id = account.subAccount })
 	
   return {
 		balance = amountForMonzoAmount(monzoBalance.balance),
@@ -265,10 +296,9 @@ function queryPrivate(method, params)
   end
 		
   local headers = {}
-  headers["Authorization"] = "Bearer " .. accessToken
+  headers["Authorization"] = "Bearer " .. LocalStorage.accessToken
 	headers["Accept"] = "application/json"
 	
-  connection = Connection()
   content = connection:request("GET", url .. path, nil, nil, headers)
 
   return JSON(content):dictionary()
@@ -302,5 +332,3 @@ function RecPrint(s, l, i) -- recursive Print (structure, limit, indent)
 	end
 	return l
 end
-
--- SIGNATURE: MC0CFQCV3H3eb8PxyYdkbY9ocmTL1cZ4KwIUNR7XZ70dzy9O+K1Q/tRgfmK8mk0=
