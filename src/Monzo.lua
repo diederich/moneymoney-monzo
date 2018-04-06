@@ -36,8 +36,9 @@ WebBanking{
   description = "Sync via Monzo's API",
 }
 
--- This extension's clientID. Registered with Monzo.
+-- This extension's clientID & secret, registered with Monzo.
 local clientId = "oauth2client_00009VIFzMMhiCGE1JcLkf"
+local clientSecret = "mnzpub.nuGvNWduD5h1sSv+/Z8NfTzSzUjthodAZRlFlvmWm2GOgD1dPC+ZXRQbtWTZycl9GRzCnU05FMZyUbgitLm7"
 
 -- User email address.
 local email
@@ -88,11 +89,11 @@ function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
     print("Requesting OAuth access token with authorization code.")
     local postContent = "grant_type=authorization_code" ..
                         "&client_id=" .. MM.urlencode(clientId) ..
+                        "&client_secret=" .. MM.urlencode(clientSecret) ..
                         "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
                         "&code=" .. MM.urlencode(authorizationCode)
     local postContentType = "application/x-www-form-urlencoded"
     local json = JSON(connection:request("POST", "https://api.monzo.com/oauth2/token", postContent, postContentType)):dictionary()
-
     -- Store access token and expiration date.
     LocalStorage.accessToken = json["access_token"]
     LocalStorage.expiresAt = os.time() + json["expires_in"]
