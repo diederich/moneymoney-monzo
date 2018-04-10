@@ -46,6 +46,9 @@ local email
 -- HTTPS connection object.
 local connection
 
+-- Set to true on initial setup to query all transactions
+local isInitialSetup = false
+
 function SupportsBank (protocol, bankCode)
   return protocol == ProtocolWebBanking and bankCode == "Monzo"
 end
@@ -104,6 +107,7 @@ function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
 end
 
 function ListAccounts (knownAccounts)
+	isInitialSetup = true
 	local monzoAccountsResponse = queryPrivate("accounts").accounts
 	local accounts = {}
 	for key, account in pairs(monzoAccountsResponse) do
@@ -159,10 +163,9 @@ function RefreshAccount (account, since)
 		account_id = account.subAccount
 	}
 	params["expand[]"] = "merchant"
-	if not (since == nil) then
-		-- This is a littlebit odd:
-		-- On first fetch it seems that MoneyMoney specifies one year from now,
-		-- even though Monzo has more data. Ignore this on first (?!) run?
+	if not isInitialSetup and not (since == nil) then
+		-- On first fetch, ignore `since` date, as Monzo actually gives us
+		-- all transactions
 		params["since"] = luaDateToMonzoDate(since)
 	end
 	
