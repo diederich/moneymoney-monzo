@@ -56,6 +56,7 @@ end
 function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
   -- Monzo's authentication uses OAuth2 and want a redirect to their website
   -- see https://monzo.com/docs/#acquire-an-access-token for details
+	-- IMPORTANT: Please contact MoneyMoney developer before using OAuth in your own extension.
   if step == 1 then
 
     -- Store e-mail address for later use.
