@@ -7,7 +7,7 @@ Requirements
 
 * [Monzo Account](https://monzo.com)
 * [MoneyMoney.app](http://moneymoney-app.com) (>= 2.3.5 - April 2018 still in beta)
-* As the Monzo API is still in beta, I need to manually add your Monzo UserID to the Monzo OAuth application.
+* As the Monzo API is still in beta, I need to manually add your Monzo UserID to the Monzo OAuth client application, or you need to create your own client app. See [Add Account] for details.
 
 To Dos
 ---------
@@ -37,10 +37,13 @@ Installation
 Add account
 -------------------
 
-Once installed, a Monzo account can be added via *Konto* > *Konto hinzufügen*.
-
-* The OAuth flow has been integrated in MoneyMoney and needs version >= 2.3.5
-* let me know your Monzo user ID, it needs to be added to the Monzo OAuth Client app
+* The OAuth flow has been integrated in MoneyMoney. Make sure you use MoneyMoney >= 2.3.5
+* To allow fetching data from Monzo, there needs to be a Monzo Client app. There are 2 options right now:
+  
+	1. you can either let me know your userID and I'll add it to mine
+	2. you can create your own client app and add the clientID and clientSecret in the Monzo.lua script
+	
+*	Once installed, a Monzo account can be added via *Konto* > *Konto hinzufügen*.
 
 Feedback
 ---------------------
