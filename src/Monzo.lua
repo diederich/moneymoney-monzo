@@ -29,10 +29,12 @@ TODO
 * Add Monzo's `pods`
 -- ]]
 
+local BANK_CODE = "Monzo"
+
 WebBanking {
   version = 0.91,
   url = "https://api.monzo.com",
-  services = { "Monzo" },
+  services = {BANK_CODE},
   description = "Sync via Monzo's API",
 }
 
@@ -50,7 +52,7 @@ local connection
 local isInitialSetup = false
 
 function SupportsBank(protocol, bankCode)
-  return protocol == ProtocolWebBanking and bankCode == "Monzo"
+    return protocol == ProtocolWebBanking and bankCode == BANK_CODE
 end
 
 function InitializeSession2(protocol, bankCode, step, credentials, interactive)
