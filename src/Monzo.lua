@@ -116,16 +116,17 @@ function ListAccounts(knownAccounts)
   for key, account in pairs(monzoAccountsResponse) do
     accounts[#accounts + 1] = {
       -- String name: Bezeichnung des Kontos
-      name = accountNameForMonzoAccount(account),
+      name = accountNameForMonzoAccountType(account.type),
       -- String owner: Name des Kontoinhabers
-      owner = account.description,
+      owner = ownerForMonzoAccountOwners(account.owners),
       -- String accountNumber: Kontonummer
-      accountNumber = email,
+      accountNumber = account.account_number .. " ", -- enforces that MoneyMoney will not hide a leading zero
       -- String subAccount: Unterkontomerkmal
       subAccount = account.id,
       -- Boolean portfolio: true für Depots und false für alle anderen Konten
       portfolio = false,
       -- String bankCode: Bankleitzahl
+      bankCode = formatSortCode(account.sort_code),
       -- String currency: Kontowährung
       currency = "GBP",
       -- String iban: IBAN
@@ -137,25 +138,54 @@ function ListAccounts(knownAccounts)
   return accounts
 end
 
-function accountNameForMonzoAccount(account)
-  if account.type == "uk_prepaid" then
-    return "Monzo Prepaid"
-  elseif account.type == "uk_retail" then
-    return "Monzo Current"
-  else
-    return "Monzo unknown"
-  end
+function accountNameForMonzoAccountType(monzoAccountTypeString)
+  local dict = {
+    uk_prepaid = "Monzo Prepaid", -- according to monzo documentation this type does not exist: https://docs.monzo.com/#accounts
+    uk_retail = "Monzo",
+    uk_retail_joint = "Monzo Joint Account",
+  }
+
+  return dict[monzoAccountTypeString] or "Monzo Unknown"
 end
 
-function accountTypeForMonzoAccountType(monzoAccountString)
-  if monzoAccountString == "uk_prepaid" then
-    return AccountTypeGiro
-  elseif monzoAccountString == "uk_retail" then
-    return AccountTypeGiro
-  else
-    print("Unknown account type: ", monzoAccountString)
-    return AccountTypeOther
+function accountTypeForMonzoAccountType(monzoAccountTypeString)
+  local dict = {
+    uk_prepaid = AccountTypeGiro, -- according to monzo documentation this type does not exist: https://docs.monzo.com/#accounts
+    uk_retail = AccountTypeGiro,
+    uk_retail_joint = AccountTypeGiro,
+  }
+
+  return dict[monzoAccountTypeString] or AccountTypeOther
+end
+
+function ownerForMonzoAccountOwners(monzoAccountOwners)
+  local result = ""
+
+  for key, owner in pairs(monzoAccountOwners) do
+    if key > 1 then
+      result = result .. " & "
+    end
+
+    result = result .. owner.preferred_name
   end
+
+  return result
+end
+
+function formatSortCode(sortCode)
+  local result = ""
+
+  for i = 1, #sortCode do
+    local char = sortCode:sub(i, i)
+
+    if i > 1 and math.fmod(i, 2) == 1 then
+      result = result .. "-"
+    end
+
+    result = result .. char
+  end
+
+  return result
 end
 
 -- Refreshes the account and retrieves transactions
