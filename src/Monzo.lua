@@ -29,10 +29,10 @@ TODO
 * Add Monzo's `pods`
 -- ]]
 
-WebBanking{
+WebBanking {
   version = 0.91,
   url = "https://api.monzo.com",
-  services= { "Monzo" },
+  services = { "Monzo" },
   description = "Sync via Monzo's API",
 }
 
@@ -49,14 +49,14 @@ local connection
 -- Set to true on initial setup to query all transactions
 local isInitialSetup = false
 
-function SupportsBank (protocol, bankCode)
+function SupportsBank(protocol, bankCode)
   return protocol == ProtocolWebBanking and bankCode == "Monzo"
 end
 
-function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
+function InitializeSession2(protocol, bankCode, step, credentials, interactive)
   -- Monzo's authentication uses OAuth2 and want a redirect to their website
   -- see https://monzo.com/docs/#acquire-an-access-token for details
-        -- IMPORTANT: Please contact MoneyMoney developer before using OAuth in your own extension.
+  -- IMPORTANT: Please contact MoneyMoney developer before using OAuth in your own extension.
   if step == 1 then
 
     -- Store e-mail address for later use.
@@ -76,11 +76,11 @@ function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
     -- Obtain OAuth 2.0 authorization code from web browser.
     if not authenticated then
       return {
-        title     = "Monzo API",
+        title = "Monzo API",
         challenge = "https://auth.monzo.com/" ..
-                    "?client_id=" .. MM.urlencode(clientId) ..
-                    "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
-                    "&response_type=code"
+            "?client_id=" .. MM.urlencode(clientId) ..
+            "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
+            "&response_type=code"
         -- The URL argument "state" will be automatically inserted by MoneyMoney.
       }
     end
@@ -92,10 +92,10 @@ function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
     -- Exchange authorization code for access token.
     print("Requesting OAuth access token with authorization code.")
     local postContent = "grant_type=authorization_code" ..
-                        "&client_id=" .. MM.urlencode(clientId) ..
-                        "&client_secret=" .. MM.urlencode(clientSecret) ..
-                        "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
-                        "&code=" .. MM.urlencode(authorizationCode)
+        "&client_id=" .. MM.urlencode(clientId) ..
+        "&client_secret=" .. MM.urlencode(clientSecret) ..
+        "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
+        "&code=" .. MM.urlencode(authorizationCode)
     local postContentType = "application/x-www-form-urlencoded"
     local json = JSON(connection:request("POST", "https://api.monzo.com/oauth2/token", postContent, postContentType)):dictionary()
     -- Store access token and expiration date.
@@ -107,184 +107,184 @@ function InitializeSession2 (protocol, bankCode, step, credentials, interactive)
   end
 end
 
-function ListAccounts (knownAccounts)
-        isInitialSetup = true
-        local monzoAccountsResponse = queryPrivate("accounts").accounts
-        local accounts = {}
-        for key, account in pairs(monzoAccountsResponse) do
-                accounts[#accounts+1] = {
-                        -- String name: Bezeichnung des Kontos
-                        name = accountNameForMonzoAccount(account),
-                        -- String owner: Name des Kontoinhabers
-                        owner = account.description,
-                        -- String accountNumber: Kontonummer
-                        accountNumber = email,
-                        -- String subAccount: Unterkontomerkmal
-                        subAccount = account.id,
-                        -- Boolean portfolio: true für Depots und false für alle anderen Konten
-                        portfolio = false,
-                        -- String bankCode: Bankleitzahl
-                        -- String currency: Kontowährung
-                        currency = "GBP",
-                        -- String iban: IBAN
-                        -- String bic: BIC
-                        -- Konstante type: Kontoart;
-                        type = accountTypeForMonzoAccountType(account.type)
-                }
-        end
+function ListAccounts(knownAccounts)
+  isInitialSetup = true
+  local monzoAccountsResponse = queryPrivate("accounts").accounts
+  local accounts = {}
+  for key, account in pairs(monzoAccountsResponse) do
+    accounts[#accounts + 1] = {
+      -- String name: Bezeichnung des Kontos
+      name = accountNameForMonzoAccount(account),
+      -- String owner: Name des Kontoinhabers
+      owner = account.description,
+      -- String accountNumber: Kontonummer
+      accountNumber = email,
+      -- String subAccount: Unterkontomerkmal
+      subAccount = account.id,
+      -- Boolean portfolio: true für Depots und false für alle anderen Konten
+      portfolio = false,
+      -- String bankCode: Bankleitzahl
+      -- String currency: Kontowährung
+      currency = "GBP",
+      -- String iban: IBAN
+      -- String bic: BIC
+      -- Konstante type: Kontoart;
+      type = accountTypeForMonzoAccountType(account.type)
+    }
+  end
   return accounts
 end
 
 function accountNameForMonzoAccount(account)
-        if account.type == "uk_prepaid" then
-                return "Monzo Prepaid"
-        elseif account.type == "uk_retail" then
-                return "Monzo Current"
-        else
-                return "Monzo unknown"
-        end
+  if account.type == "uk_prepaid" then
+    return "Monzo Prepaid"
+  elseif account.type == "uk_retail" then
+    return "Monzo Current"
+  else
+    return "Monzo unknown"
+  end
 end
 
 function accountTypeForMonzoAccountType(monzoAccountString)
-        if monzoAccountString == "uk_prepaid" then
-                return AccountTypeGiro
-        elseif monzoAccountString == "uk_retail" then
-                return AccountTypeGiro
-        else
-                print("Unknown account type: ", monzoAccountString)
-                return AccountTypeOther
-        end
+  if monzoAccountString == "uk_prepaid" then
+    return AccountTypeGiro
+  elseif monzoAccountString == "uk_retail" then
+    return AccountTypeGiro
+  else
+    print("Unknown account type: ", monzoAccountString)
+    return AccountTypeOther
+  end
 end
 
 -- Refreshes the account and retrieves transactions
-function RefreshAccount (account, since)
-        MM.printStatus("Refreshing account " .. account.name)
+function RefreshAccount(account, since)
+  MM.printStatus("Refreshing account " .. account.name)
 
-        local params = {
-                account_id = account.subAccount
-        }
-        params["expand[]"] = "merchant"
-        if not isInitialSetup and not (since == nil) then
-                -- On first fetch, ignore `since` date, as Monzo actually gives us
-                -- all transactions
-                params["since"] = luaDateToMonzoDate(since)
-        end
-
-        local transactionsResponse = queryPrivate("transactions", params)
-        if nil == transactionsResponse.transactions then
-                return transactionsResponse.message
-        end
-
-        local t = {} -- List of transactions to return
-  for index, monzoTransaction in pairs(transactionsResponse.transactions) do
-                local transaction = transactionForMonzoTransaction(monzoTransaction)
-                if transaction == nil then
-                        print("Skipped transaction: " .. monzoTransaction.description)
-                else
-                         t[#t+1] = transaction
-                end
+  local params = {
+    account_id = account.subAccount
+  }
+  params["expand[]"] = "merchant"
+  if not isInitialSetup and not (since == nil) then
+    -- On first fetch, ignore `since` date, as Monzo actually gives us
+    -- all transactions
+    params["since"] = luaDateToMonzoDate(since)
   end
 
-        local monzoBalance = queryPrivate("balance", { account_id = account.subAccount })
+  local transactionsResponse = queryPrivate("transactions", params)
+  if nil == transactionsResponse.transactions then
+    return transactionsResponse.message
+  end
+
+  local t = {} -- List of transactions to return
+  for index, monzoTransaction in pairs(transactionsResponse.transactions) do
+    local transaction = transactionForMonzoTransaction(monzoTransaction)
+    if transaction == nil then
+      print("Skipped transaction: " .. monzoTransaction.description)
+    else
+      t[#t + 1] = transaction
+    end
+  end
+
+  local monzoBalance = queryPrivate("balance", { account_id = account.subAccount })
 
   return {
-                balance = amountForMonzoAmount(monzoBalance.balance),
-                transactions = t
-        }
+    balance = amountForMonzoAmount(monzoBalance.balance),
+    transactions = t
+  }
 end
 
 function transactionForMonzoTransaction(transaction)
-        local isValidTransaction = (transaction.decline_reason == nil) or false
-        if not isValidTransaction then
-                -- I haven't found a way of marking transactions as invalid,
-                -- so we could display the error reason which Monzo provides us with.
-                -- One workaround would be to keep the transaction, but set the amount to zero
-                return nil
-        end
-        local isBooked = (not(transaction.settled == nil)) and not (apiDateStrToTimestamp(transaction.settled) == nil)
+  local isValidTransaction = (transaction.decline_reason == nil) or false
+  if not isValidTransaction then
+    -- I haven't found a way of marking transactions as invalid,
+    -- so we could display the error reason which Monzo provides us with.
+    -- One workaround would be to keep the transaction, but set the amount to zero
+    return nil
+  end
+  local isBooked = (not (transaction.settled == nil)) and not (apiDateStrToTimestamp(transaction.settled) == nil)
 
-        local purpose = transaction.description
-        if not(transaction.local_currency == transaction.currency) then
-                purpose = purpose .. "\nConverted from " .. amountForMonzoAmount(transaction.local_amount) .. transaction.local_currency
-        end
+  local purpose = transaction.description
+  if not (transaction.local_currency == transaction.currency) then
+    purpose = purpose .. "\nConverted from " .. amountForMonzoAmount(transaction.local_amount) .. transaction.local_currency
+  end
 
-        t = {
-                -- String name: Name des Auftraggebers/Zahlungsempfängers
-                name = nameForTransaction(transaction),
-                -- String accountNumber: Kontonummer oder IBAN des Auftraggebers/Zahlungsempfängers
-                -- String bankCode: Bankzeitzahl oder BIC des Auftraggebers/Zahlungsempfängers
-                -- Number amount: Betrag
-                amount = amountForMonzoAmount(transaction.amount),
-                -- String currency: Währung
-                currency = transaction.currency,
-                -- Number bookingDate: Buchungstag; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
-          bookingDate = apiDateStrToTimestamp(transaction.created),
-                -- Number valueDate: Wertstellungsdatum; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
-          valueDate = apiDateStrToTimestamp(transaction.settled),
-                -- String purpose: Verwendungszweck; Mehrere Zeilen können durch Zeilenumbrüche ("\n") getrennt werden.
-          purpose = purpose,
-                -- Number transactionCode: Geschäftsvorfallcode
-                -- Number textKeyExtension: Textschlüsselergänzung
-                -- String purposeCode: SEPA-Verwendungsschlüssel
-                purposeCode = transaction.category,
-                -- String bookingKey: SWIFT-Buchungsschlüssel
-                bookingKey = transaction.dedupe_id,
-                -- String bookingText: Umsatzart
-                bookingText = transaction.notes,
-                -- String primanotaNumber: Primanota-Nummer
-                -- String customerReference: SEPA-Einreicherreferenz
-                -- String endToEndReference: SEPA-Ende-zu-Ende-Referenz
-                -- String mandateReference: SEPA-Mandatsreferenz
-                -- String creditorId: SEPA-Gläubiger-ID
-                -- String returnReason: Rückgabegrund
-                returnReason = transaction.decline_reason,
-                -- Boolean booked: Gebuchter oder vorgemerkter Umsatz
-                booked = isBooked,
-        }
-        return t
+  t = {
+    -- String name: Name des Auftraggebers/Zahlungsempfängers
+    name = nameForTransaction(transaction),
+    -- String accountNumber: Kontonummer oder IBAN des Auftraggebers/Zahlungsempfängers
+    -- String bankCode: Bankzeitzahl oder BIC des Auftraggebers/Zahlungsempfängers
+    -- Number amount: Betrag
+    amount = amountForMonzoAmount(transaction.amount),
+    -- String currency: Währung
+    currency = transaction.currency,
+    -- Number bookingDate: Buchungstag; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
+    bookingDate = apiDateStrToTimestamp(transaction.created),
+    -- Number valueDate: Wertstellungsdatum; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
+    valueDate = apiDateStrToTimestamp(transaction.settled),
+    -- String purpose: Verwendungszweck; Mehrere Zeilen können durch Zeilenumbrüche ("\n") getrennt werden.
+    purpose = purpose,
+    -- Number transactionCode: Geschäftsvorfallcode
+    -- Number textKeyExtension: Textschlüsselergänzung
+    -- String purposeCode: SEPA-Verwendungsschlüssel
+    purposeCode = transaction.category,
+    -- String bookingKey: SWIFT-Buchungsschlüssel
+    bookingKey = transaction.dedupe_id,
+    -- String bookingText: Umsatzart
+    bookingText = transaction.notes,
+    -- String primanotaNumber: Primanota-Nummer
+    -- String customerReference: SEPA-Einreicherreferenz
+    -- String endToEndReference: SEPA-Ende-zu-Ende-Referenz
+    -- String mandateReference: SEPA-Mandatsreferenz
+    -- String creditorId: SEPA-Gläubiger-ID
+    -- String returnReason: Rückgabegrund
+    returnReason = transaction.decline_reason,
+    -- Boolean booked: Gebuchter oder vorgemerkter Umsatz
+    booked = isBooked,
+  }
+  return t
 end
 
 function amountForMonzoAmount(amount)
-        if amount == nil then
-                return 0
-        end
-        return amount / 100
+  if amount == nil then
+    return 0
+  end
+  return amount / 100
 end
 
 function nameForTransaction(transaction)
-        local transactionName
-        if transaction.is_load == true then
-                transactionName = "Top up"
-        elseif not (transaction.merchant == nil) then
-                transactionName = transaction.merchant.name
-        else
-                transactionName = transaction.description
-        end
-        return transactionName or transaction.description
+  local transactionName
+  if transaction.is_load == true then
+    transactionName = "Top up"
+  elseif not (transaction.merchant == nil) then
+    transactionName = transaction.merchant.name
+  else
+    transactionName = transaction.description
+  end
+  return transactionName or transaction.description
 end
 
 function apiDateStrToTimestamp(dateStr)
-        if string.len(dateStr) == 0 then
-                return nil
-        end
+  if string.len(dateStr) == 0 then
+    return nil
+  end
   local yearStr, monthStr, dayStr, hourStr, minStr, secStr = string.match(dateStr, "(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)")
   return os.time({
-      year = tonumber(yearStr),
-      month = tonumber(monthStr),
-      day = tonumber(dayStr),
-      hour = tonumber(hourStr),
-      min = tonumber(minStr),
-      sec = tonumber(secStr)
+    year = tonumber(yearStr),
+    month = tonumber(monthStr),
+    day = tonumber(dayStr),
+    hour = tonumber(hourStr),
+    min = tonumber(minStr),
+    sec = tonumber(secStr)
   })
 end
 
 function luaDateToMonzoDate(date)
-        -- Mind the exlamation mark which produces UTC
-        local dateString = os.date("!%Y-%m-%dT%XZ", date)
-        return dateString
+  -- Mind the exlamation mark which produces UTC
+  local dateString = os.date("!%Y-%m-%dT%XZ", date)
+  return dateString
 end
 
-function EndSession ()
+function EndSession()
 end
 
 -- Builds the request for sending to Monzo API and unpacks
@@ -293,15 +293,15 @@ function queryPrivate(method, params)
   local path = string.format("/%s", method)
 
   if not (params == nil) then
-          local queryParams = httpBuildQuery(params)
-                if string.len(queryParams) > 0 then
-                        path = path .. "?".. queryParams
-                end
+    local queryParams = httpBuildQuery(params)
+    if string.len(queryParams) > 0 then
+      path = path .. "?" .. queryParams
+    end
   end
 
   local headers = {}
   headers["Authorization"] = "Bearer " .. LocalStorage.accessToken
-        headers["Accept"] = "application/json"
+  headers["Accept"] = "application/json"
 
   content = connection:request("GET", url .. path, nil, nil, headers)
 
@@ -314,7 +314,7 @@ function httpBuildQuery(params)
     str = str .. key .. "=" .. value .. "&"
   end
   str = str.sub(str, 1, -2)
-        return str
+  return str
 end
 
 -- DEBUG Helpers
@@ -325,14 +325,14 @@ end
         Set indent ("") to prefix each line:    Mytable [KEY] [KEY]...[KEY] VALUE
 --]]
 function RecPrint(s, l, i) -- recursive Print (structure, limit, indent)
-        l = (l) or 100; i = i or "";        -- default item limit, indent string
-        if (l<1) then print "ERROR: Item limit reached."; return l-1 end;
-        local ts = type(s);
-        if (ts ~= "table") then print (i,ts,s); return l-1 end
-        print (i,ts);           -- print "table"
-        for k,v in pairs(s) do  -- print "[KEY] VALUE"
-                l = RecPrint(v, l, i.."\t["..tostring(k).."]");
-                if (l < 0) then break end
-        end
-        return l
+  l = (l) or 100; i = i or ""; -- default item limit, indent string
+  if (l < 1) then print "ERROR: Item limit reached."; return l - 1 end;
+  local ts = type(s);
+  if (ts ~= "table") then print(i, ts, s); return l - 1 end
+  print(i, ts); -- print "table"
+  for k, v in pairs(s) do -- print "[KEY] VALUE"
+    l = RecPrint(v, l, i .. "\t[" .. tostring(k) .. "]");
+    if (l < 0) then break end
+  end
+  return l
 end
