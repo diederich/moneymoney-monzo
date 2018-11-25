@@ -35,7 +35,7 @@ WebBanking {
   version = 0.91,
   url = "https://api.monzo.com",
   services = {BANK_CODE},
-  description = "Sync via Monzo's API",
+  description = string.format(MM.localizeText("Get balance and transactions for %s"), BANK_CODE),
 }
 
 -- This extension's clientID & secret, registered with Monzo.
