@@ -38,13 +38,6 @@ WebBanking {
   description = string.format(MM.localizeText("Get balance and transactions for %s"), BANK_CODE),
 }
 
--- This extension's clientID & secret, registered with Monzo.
-local clientId = "oauth2client_00009VIFzMMhiCGE1JcLkf"
-local clientSecret = "mnzpub.nuGvNWduD5h1sSv+/Z8NfTzSzUjthodAZRlFlvmWm2GOgD1dPC+ZXRQbtWTZycl9GRzCnU05FMZyUbgitLm7"
-
--- User email address.
-local email
-
 -- HTTPS connection object.
 local connection
 
@@ -55,14 +48,16 @@ function SupportsBank(protocol, bankCode)
     return protocol == ProtocolWebBanking and bankCode == BANK_CODE
 end
 
+local clientId
+local clientSecret
+
 function InitializeSession2(protocol, bankCode, step, credentials, interactive)
   -- Monzo's authentication uses OAuth2 and want a redirect to their website
   -- see https://monzo.com/docs/#acquire-an-access-token for details
   -- IMPORTANT: Please contact MoneyMoney developer before using OAuth in your own extension.
   if step == 1 then
-
-    -- Store e-mail address for later use.
-    email = credentials[1]
+    clientId = credentials[1]
+    clientSecret = credentials[2]
 
     -- Create HTTPS connection object.
     connection = Connection()
