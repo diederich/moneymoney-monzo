@@ -115,7 +115,7 @@ function ListAccounts(knownAccounts)
       -- String owner: Name des Kontoinhabers
       owner = ownerForMonzoAccountOwners(account.owners),
       -- String accountNumber: Kontonummer
-      accountNumber = account.account_number .. " ", -- enforces that MoneyMoney will not hide a leading zero
+      accountNumber = (account.account_number or account.id) .. " ", -- enforces that MoneyMoney will not hide a leading zero
       -- String subAccount: Unterkontomerkmal
       subAccount = account.id,
       -- Boolean portfolio: true für Depots und false für alle anderen Konten
@@ -169,7 +169,9 @@ end
 
 function formatSortCode(sortCode)
   local result = ""
-
+  if sortCode == nil then
+    return result
+  end
   for i = 1, #sortCode do
     local char = sortCode:sub(i, i)
 
@@ -363,3 +365,5 @@ function RecPrint(s, l, i) -- recursive Print (structure, limit, indent)
   end
   return l
 end
+
+-- SIGNATURE: MC0CFEgMBsbYgKX6rf0Nf2DWH3duMQasAhUAjKviTQ0sMlHUdpPmqmTfT2cMKZA=
