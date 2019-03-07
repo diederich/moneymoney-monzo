@@ -47,13 +47,6 @@ Installation
 	* Go to "Extensions"-tab
 	* Allow unsigned extensions
 
-Add account
--------------------
-
-* The OAuth flow has been integrated in MoneyMoney. Make sure you use MoneyMoney >= 2.3.5
-* To allow fetching data from Monzo, there needs to be a Monzo Client app. There are 2 options right now:
-*	Once installed, a Monzo account can be added via *Konto* > *Konto hinzufügen*.
-
 Feedback
 ---------------------
 
