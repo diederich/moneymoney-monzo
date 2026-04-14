@@ -132,9 +132,9 @@ function ListAccounts(knownAccounts)
       -- String currency: Kontowährung
       currency = account.currency,
       -- String iban: IBAN
-      iban = account.payment_details.iban.unformatted,
+      iban = account.payment_details and account.payment_details.iban and account.payment_details.iban.unformatted,
       -- String bic: BIC
-      bic = account.payment_details.iban.bic,
+      bic = account.payment_details and account.payment_details.iban and account.payment_details.iban.bic,
       -- Konstante type: Kontoart;
       type = AccountTypeGiro
     }
@@ -142,6 +142,7 @@ function ListAccounts(knownAccounts)
     -- Fetch pots for this account
     local potsResponse = queryPrivate("pots", { current_account_id = account.id })
     if potsResponse and potsResponse.pots then
+      local accountIban = account.payment_details and account.payment_details.iban
       for _, pot in pairs(potsResponse.pots) do
         if not pot.deleted then
           -- Store pot metadata for efficient refresh and transaction name lookup
@@ -157,8 +158,8 @@ function ListAccounts(knownAccounts)
             subAccount = pot.id,
             portfolio = false,
             currency = pot.currency,
-            iban = account.payment_details.iban.unformatted,
-            bic = account.payment_details.iban.bic,
+            iban = accountIban and accountIban.unformatted,
+            bic = accountIban and accountIban.bic,
             type = pot.type == "instant_access" and AccountTypeSavings or AccountTypeOther
           }
         end
@@ -321,7 +322,7 @@ function transactionForMonzoTransaction(transaction)
     purpose = purpose .. "\nConverted from " .. amountForMonzoAmount(transaction.local_amount) .. transaction.local_currency
   end
 
-  t = {
+  local t = {
     -- String name: Name des Auftraggebers/Zahlungsempfängers
     name = nameForTransaction(transaction),
     -- String accountNumber: Kontonummer oder IBAN des Auftraggebers/Zahlungsempfängers
@@ -397,7 +398,7 @@ function nameForTransaction(transaction)
 end
 
 function apiDateStrToTimestamp(dateStr)
-  if string.len(dateStr) == 0 then
+  if dateStr == nil or string.len(dateStr) == 0 then
     return nil
   end
   local yearStr, monthStr, dayStr, hourStr, minStr, secStr = string.match(dateStr, "(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)")
@@ -436,7 +437,7 @@ function queryPrivate(method, params)
   headers["Authorization"] = "Bearer " .. LocalStorage.accessToken
   headers["Accept"] = "application/json"
 
-  content = connection:request("GET", url .. path, nil, nil, headers)
+  local content = connection:request("GET", url .. path, nil, nil, headers)
 
   return JSON(content):dictionary()
 end
@@ -444,7 +445,7 @@ end
 function httpBuildQuery(params)
   local str = ''
   for key, value in pairs(params) do
-    str = str .. key .. "=" .. value .. "&"
+    str = str .. MM.urlencode(key) .. "=" .. MM.urlencode(value) .. "&"
   end
   str = str.sub(str, 1, -2)
   return str
@@ -469,5 +470,3 @@ function RecPrint(s, l, i) -- recursive Print (structure, limit, indent)
   end
   return l
 end
-
--- SIGNATURE: MC0CFEgMBsbYgKX6rf0Nf2DWH3duMQasAhUAjKviTQ0sMlHUdpPmqmTfT2cMKZA=
