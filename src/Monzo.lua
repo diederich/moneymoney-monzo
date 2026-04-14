@@ -234,13 +234,6 @@ function RefreshAccount(account, since)
 end
 
 function transactionForMonzoTransaction(transaction)
-  local isValidTransaction = (transaction.decline_reason == nil) or false
-  if not isValidTransaction then
-    -- I haven't found a way of marking transactions as invalid,
-    -- so we could display the error reason which Monzo provides us with.
-    -- One workaround would be to keep the transaction, but set the amount to zero
-    return nil
-  end
   local isBooked = (not (transaction.settled == nil)) and not (apiDateStrToTimestamp(transaction.settled) == nil)
 
   local purpose = transaction.description
@@ -252,7 +245,9 @@ function transactionForMonzoTransaction(transaction)
     -- String name: Name des Auftraggebers/Zahlungsempfängers
     name = nameForTransaction(transaction),
     -- String accountNumber: Kontonummer oder IBAN des Auftraggebers/Zahlungsempfängers
+    accountNumber = transaction.counterparty and transaction.counterparty.iban,
     -- String bankCode: Bankzeitzahl oder BIC des Auftraggebers/Zahlungsempfängers
+    bankCode = transaction.counterparty and transaction.counterparty.bic,
     -- Number amount: Betrag
     amount = amountForMonzoAmount(transaction.amount),
     -- String currency: Währung
@@ -266,18 +261,15 @@ function transactionForMonzoTransaction(transaction)
     -- Number transactionCode: Geschäftsvorfallcode
     -- Number textKeyExtension: Textschlüsselergänzung
     -- String purposeCode: SEPA-Verwendungsschlüssel
-    purposeCode = transaction.category,
     -- String bookingKey: SWIFT-Buchungsschlüssel
-    bookingKey = transaction.dedupe_id,
     -- String bookingText: Umsatzart
-    bookingText = transaction.notes,
+    bookingText = transaction.scheme,
     -- String primanotaNumber: Primanota-Nummer
     -- String customerReference: SEPA-Einreicherreferenz
     -- String endToEndReference: SEPA-Ende-zu-Ende-Referenz
     -- String mandateReference: SEPA-Mandatsreferenz
     -- String creditorId: SEPA-Gläubiger-ID
     -- String returnReason: Rückgabegrund
-    returnReason = transaction.decline_reason,
     -- Boolean booked: Gebuchter oder vorgemerkter Umsatz
     booked = isBooked,
   }
@@ -295,12 +287,14 @@ function nameForTransaction(transaction)
   local transactionName
   if transaction.is_load == true then
     transactionName = "Top up"
-  elseif not (transaction.merchant == nil) then
+  elseif transaction.merchant and transaction.merchant.name then
     transactionName = transaction.merchant.name
+  elseif transaction.counterparty and transaction.counterparty.name then
+    transactionName = transaction.counterparty.name
   else
-    transactionName = transaction.description
+    transactionName = BANK_CODE
   end
-  return transactionName or transaction.description
+  return transactionName
 end
 
 function apiDateStrToTimestamp(dateStr)
