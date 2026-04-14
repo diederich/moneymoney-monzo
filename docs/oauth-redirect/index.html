@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src https://github.githubassets.com; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="robots" content="noindex" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirecting to MoneyMoney…</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        max-width: 42rem;
+        margin: 3rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="https://github.com/diederich/moneymoney-monzo" aria-label="View on GitHub" style="position:fixed;top:1rem;right:1rem">
+      <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" width="32" height="32" />
+    </a>
+    <h1>Redirecting to MoneyMoney…</h1>
+    <p>This page only forwards the OAuth response back to <a href="https://moneymoney-app.com">MoneyMoney</a>.</p>
+    <p id="status">Attempting automatic redirect…</p>
+    <p id="fallback" hidden>
+      If nothing happens, <a id="link" rel="nofollow">open MoneyMoney manually</a>.
+    </p>
+    <noscript><p>JavaScript is required for the redirect to work.</p></noscript>
+
+    <script>
+      (function () {
+        var target = "moneymoney-app://oauth" + window.location.search + window.location.hash;
+        document.getElementById("link").href = target;
+
+        setTimeout(function () {
+          document.getElementById("fallback").hidden = false;
+          document.getElementById("status").textContent =
+            "Your browser may require a manual click.";
+        }, 800);
+
+        window.location.replace(target);
+      })();
+    </script>
+  </body>
+</html>

@@ -25,7 +25,7 @@
 -- SOFTWARE.
 
 local BANK_CODE = "Monzo"
-local REDIRECT_URI = "https://www.janmuennich.com/moneymoney-redirect/"
+local REDIRECT_URI = "https://diederich.github.io/moneymoney-monzo/oauth-redirect/"
 
 WebBanking {
   version = 1.00,
