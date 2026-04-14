@@ -63,11 +63,6 @@ exit;
 Make sure to register the matching redirect URL in your Monzo OAuth client at https://developers.monzo.com/.
 
 
-# To Dos
-
-* Support Monzo's pods
-
-
 # Feedback
 
 Feel free to create a Github Issue for feedback / questions.

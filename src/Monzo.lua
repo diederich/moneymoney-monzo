@@ -24,8 +24,6 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
--- TODO: Add Monzo's pots
-
 local BANK_CODE = "Monzo"
 local REDIRECT_URI = "https://www.janmuennich.com/moneymoney-redirect/"
 
@@ -138,8 +136,34 @@ function ListAccounts(knownAccounts)
       -- String bic: BIC
       bic = account.payment_details.iban.bic,
       -- Konstante type: Kontoart;
-      type = accountTypeForMonzoAccountType(account.type)
+      type = AccountTypeGiro
     }
+
+    -- Fetch pots for this account
+    local potsResponse = queryPrivate("pots", { current_account_id = account.id })
+    if potsResponse and potsResponse.pots then
+      for _, pot in pairs(potsResponse.pots) do
+        if not pot.deleted then
+          -- Store pot metadata for efficient refresh and transaction name lookup
+          LocalStorage.potParentAccount = LocalStorage.potParentAccount or {}
+          LocalStorage.potParentAccount[pot.id] = account.id
+          LocalStorage.potNames = LocalStorage.potNames or {}
+          LocalStorage.potNames[pot.id] = pot.name
+
+          accounts[#accounts + 1] = {
+            name = "Monzo " .. pot.name,
+            owner = ownerForMonzoAccountOwners(account.owner_type, account.owners, account.description),
+            accountNumber = (account.account_number or account.id) .. " ",
+            subAccount = pot.id,
+            portfolio = false,
+            currency = pot.currency,
+            iban = account.payment_details.iban.unformatted,
+            bic = account.payment_details.iban.bic,
+            type = pot.type == "instant_access" and AccountTypeSavings or AccountTypeOther
+          }
+        end
+      end
+    end
   end
   return accounts
 end
@@ -150,12 +174,6 @@ function accountNameForMonzoAccountType(monzoAccountTypeString)
     return "Monzo Business"
   end
   return "Monzo"
-end
-
--- The full list of account types is not published by Monzo since the API documentation is outdated.
-function accountTypeForMonzoAccountType(monzoAccountTypeString)
-	-- Todo: use AccountTypeSavings for savings and pockets
-  return AccountTypeGiro
 end
 
 function ownerForMonzoAccountOwners(monzoAccountOwnerType, monzoAccountOwners, monzoAccountDescription)
@@ -200,6 +218,11 @@ end
 function RefreshAccount(account, since)
   MM.printStatus("Refreshing account " .. account.name)
 
+  -- Pots are identified by their subAccount starting with "pot_"
+  if account.subAccount:match("^pot_") then
+    return refreshPot(account)
+  end
+
   local params = {
     account_id = account.subAccount
   }
@@ -210,12 +233,25 @@ function RefreshAccount(account, since)
     params["since"] = luaDateToMonzoDate(since)
   end
 
+  -- Fetch pot info for transaction name and description lookup
+  local potsResponse = queryPrivate("pots", { current_account_id = account.subAccount })
+  if potsResponse and potsResponse.pots then
+    LocalStorage.potNames = LocalStorage.potNames or {}
+    LocalStorage.potTypes = LocalStorage.potTypes or {}
+    for _, pot in pairs(potsResponse.pots) do
+      LocalStorage.potNames[pot.id] = pot.name
+      LocalStorage.potTypes[pot.id] = pot.type
+    end
+  end
+
   local transactionsResponse = queryPrivate("transactions", params)
   if nil == transactionsResponse.transactions then
     return transactionsResponse.message
   end
 
   local t = {} -- List of transactions to return
+  -- Collect pot contra entries while processing transactions
+  local potTransactions = {}
   for index, monzoTransaction in pairs(transactionsResponse.transactions) do
     local transaction = transactionForMonzoTransaction(monzoTransaction)
     if transaction == nil then
@@ -223,7 +259,24 @@ function RefreshAccount(account, since)
     else
       t[#t + 1] = transaction
     end
+
+    -- Store contra entry for pot transactions
+    if monzoTransaction.metadata and monzoTransaction.metadata.pot_id then
+      local potId = monzoTransaction.metadata.pot_id
+      local isBooked = (not (monzoTransaction.settled == nil)) and not (apiDateStrToTimestamp(monzoTransaction.settled) == nil)
+      potTransactions[potId] = potTransactions[potId] or {}
+      potTransactions[potId][#potTransactions[potId] + 1] = {
+        name = BANK_CODE,
+        amount = amountForMonzoAmount(-monzoTransaction.amount),
+        currency = monzoTransaction.currency,
+        bookingDate = apiDateStrToTimestamp(monzoTransaction.created),
+        valueDate = apiDateStrToTimestamp(monzoTransaction.settled),
+        purpose = monzoTransaction.amount < 0 and "Deposit from main account" or "Withdrawal to main account",
+        booked = isBooked,
+      }
+    end
   end
+  LocalStorage.potTransactions = potTransactions
 
   local monzoBalance = queryPrivate("balance", { account_id = account.subAccount })
 
@@ -233,10 +286,37 @@ function RefreshAccount(account, since)
   }
 end
 
+function refreshPot(account)
+  local parentAccountId = LocalStorage.potParentAccount and LocalStorage.potParentAccount[account.subAccount]
+  if not parentAccountId then
+    return { balance = 0, transactions = {} }
+  end
+
+  -- Fetch pot balance
+  local balance = 0
+  local potsResponse = queryPrivate("pots", { current_account_id = parentAccountId })
+  if potsResponse and potsResponse.pots then
+    for _, pot in pairs(potsResponse.pots) do
+      if pot.id == account.subAccount then
+        balance = amountForMonzoAmount(pot.balance)
+        break
+      end
+    end
+  end
+
+  -- Use contra entries stored during main account refresh
+  local t = LocalStorage.potTransactions and LocalStorage.potTransactions[account.subAccount] or {}
+
+  return {
+    balance = balance,
+    transactions = t
+  }
+end
+
 function transactionForMonzoTransaction(transaction)
   local isBooked = (not (transaction.settled == nil)) and not (apiDateStrToTimestamp(transaction.settled) == nil)
 
-  local purpose = transaction.description
+  local purpose = purposeForTransaction(transaction)
   if not (transaction.local_currency == transaction.currency) then
     purpose = purpose .. "\nConverted from " .. amountForMonzoAmount(transaction.local_amount) .. transaction.local_currency
   end
@@ -283,10 +363,29 @@ function amountForMonzoAmount(amount)
   return amount / 100
 end
 
+function purposeForTransaction(transaction)
+  if transaction.metadata and transaction.metadata.pot_id and LocalStorage.potNames then
+    local potId = transaction.metadata.pot_id
+    local potName = LocalStorage.potNames[potId]
+    if potName then
+      local potType = LocalStorage.potTypes and LocalStorage.potTypes[potId]
+      local potLabel = potType == "instant_access" and "Instant Access Savings Pot" or "Pot"
+      if transaction.amount < 0 then
+        return "Added to " .. potLabel .. ": " .. potName
+      else
+        return "Withdrawn from " .. potLabel .. ": " .. potName
+      end
+    end
+  end
+  return transaction.description
+end
+
 function nameForTransaction(transaction)
   local transactionName
   if transaction.is_load == true then
     transactionName = "Top up"
+  elseif transaction.metadata and transaction.metadata.pot_id and LocalStorage.potNames then
+    transactionName = LocalStorage.potNames[transaction.metadata.pot_id] or BANK_CODE
   elseif transaction.merchant and transaction.merchant.name then
     transactionName = transaction.merchant.name
   elseif transaction.counterparty and transaction.counterparty.name then
