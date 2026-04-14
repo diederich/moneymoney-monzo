@@ -28,7 +28,7 @@ local BANK_CODE = "Monzo"
 local REDIRECT_URI = "https://www.janmuennich.com/moneymoney-redirect/"
 
 WebBanking {
-  version = 0.91,
+  version = 1.00,
   url = "https://api.monzo.com",
   services = {BANK_CODE},
   description = string.format(MM.localizeText("Get balance and transactions for %s"), BANK_CODE),
