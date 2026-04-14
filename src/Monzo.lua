@@ -97,9 +97,6 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
     LocalStorage.accessToken = json["access_token"]
     LocalStorage.expiresAt = os.time() + json["expires_in"]
 
-    -- Not really necessary, but allows MoneyMoney to suggest the right country in the account settings as long as Monzo has no IBAN.
-    LocalStorage.country = "gb"
-
     -- Token is in pre_verification state until approved in the Monzo app.
     return {
       title = "Monzo",
@@ -125,7 +122,7 @@ function ListAccounts(knownAccounts)
       -- String name: Bezeichnung des Kontos
       name = accountNameForMonzoAccountType(account.type),
       -- String owner: Name des Kontoinhabers
-      owner = ownerForMonzoAccountOwners(account.owners),
+      owner = ownerForMonzoAccountOwners(account.owner_type, account.owners, account.description),
       -- String accountNumber: Kontonummer
       accountNumber = (account.account_number or account.id) .. " ", -- enforces that MoneyMoney will not hide a leading zero
       -- String subAccount: Unterkontomerkmal
@@ -135,9 +132,11 @@ function ListAccounts(knownAccounts)
       -- String bankCode: Bankleitzahl
       bankCode = formatSortCode(account.sort_code),
       -- String currency: Kontowährung
-      currency = "GBP",
+      currency = account.currency,
       -- String iban: IBAN
+      iban = account.payment_details.iban.unformatted,
       -- String bic: BIC
+      bic = account.payment_details.iban.bic,
       -- Konstante type: Kontoart;
       type = accountTypeForMonzoAccountType(account.type)
     }
@@ -145,36 +144,36 @@ function ListAccounts(knownAccounts)
   return accounts
 end
 
+-- The full list of account types is not published by Monzo since the API documentation is outdated.
 function accountNameForMonzoAccountType(monzoAccountTypeString)
-  local dict = {
-    uk_prepaid = "Monzo Prepaid", -- according to monzo documentation this type does not exist: https://docs.monzo.com/#accounts
-    uk_retail = "Monzo",
-    uk_retail_joint = "Monzo Joint Account",
-  }
-
-  return dict[monzoAccountTypeString] or "Monzo Unknown"
+  if monzoAccountTypeString:match("_business$") then
+    return "Monzo Business"
+  end
+  return "Monzo"
 end
 
+-- The full list of account types is not published by Monzo since the API documentation is outdated.
 function accountTypeForMonzoAccountType(monzoAccountTypeString)
-  local dict = {
-    uk_prepaid = AccountTypeGiro, -- according to monzo documentation this type does not exist: https://docs.monzo.com/#accounts
-    uk_retail = AccountTypeGiro,
-    uk_retail_joint = AccountTypeGiro,
-  }
-
-  return dict[monzoAccountTypeString] or AccountTypeOther
+	-- Todo: use AccountTypeSavings for savings and pockets
+  return AccountTypeGiro
 end
 
-function ownerForMonzoAccountOwners(monzoAccountOwners)
+function ownerForMonzoAccountOwners(monzoAccountOwnerType, monzoAccountOwners, monzoAccountDescription)
   local result = ""
 
-  for key, owner in pairs(monzoAccountOwners) do
-    if key > 1 then
-      result = result .. " & "
-    end
-
-    result = result .. owner.preferred_name
-  end
+  if monzoAccountOwnerType == "personal" then
+		-- handle joint accounts
+		for key, owner in pairs(monzoAccountOwners) do
+		if key > 1 then
+			result = result .. " & "
+		end
+		result = result .. owner.preferred_name
+	end
+	
+	elseif monzoAccountOwnerType == "business" then
+		-- Could not find business name anywhere else
+		result = monzoAccountDescription
+	end
 
   return result
 end
