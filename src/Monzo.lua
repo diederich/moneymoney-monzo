@@ -230,8 +230,11 @@ function RefreshAccount(account, since)
   params["expand[]"] = "merchant"
   if not isInitialSetup and not (since == nil) then
     -- On first fetch, ignore `since` date, as Monzo actually gives us
-    -- all transactions
-    params["since"] = luaDateToMonzoDate(since)
+    -- all transactions.
+    -- Monzo limits transaction access to the last 90 days after the initial
+    -- 5-minute auth window, so cap `since` to 89 days ago.
+    local ninetyDaysAgo = os.time() - 89 * 24 * 60 * 60
+    params["since"] = luaDateToMonzoDate(math.max(since, ninetyDaysAgo))
   end
 
   -- Fetch pot info for transaction name and description lookup
