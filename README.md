@@ -2,44 +2,29 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
 
 ![MoneyMoney screenshot with Monzo accounts](screenshots/monzo-accounts.png)
 
-Requirements
-----------------
+
+# Requirements
 
 * [Monzo Account](https://monzo.com)
 * [MoneyMoney.app](http://moneymoney-app.com) (>= 2.3.5)
-* As the Monzo API is still in beta, I need to manually add your Monzo UserID to the Monzo OAuth client application, or you need to create your own client app. See [Add Account] for details.
-
-To Dos
----------
-* Support Monzo's pods
+* A Monzo OAuth client (see [Installation](#installation))
 
 
-Installation
-------------
+# Installation
 
-### Signed copy from Extensions Page (preferred)
+## Install extension
 
-1. Download a signed version of this from https://moneymoney-app.com/extensions/
+### Either signed copy from Extensions Page (preferred)
+
+* Download a signed version of this from https://moneymoney-app.com/extensions/
   * Open MoneyMoney, tap *Hilfe* > *Zeige Datenbank*
-  * put the downloaded `Monzo.lua` file in the shown folder
-2. Create a new Monzo app via https://developers.monzo.com/
-  * Create a new OAuth client via https://developers.monzo.com/apps/new
-  * Make sure to add `moneymoney-app://oauth` in the *Redirect URLs* field
-  * Add something to the other fields, e.g. `MyMoneyMoneyExtension` as Name
-  * Set *Confidentiality* to *Not Confidential*
-  * Tap *Submit*
-3. Add an account in MoneyMoney
-  * create a new account via *Konto* > *Konto hinzufügen*.
-  * Use the API-Client-ID from the Monzo app in step 2) for the API-Client-ID field
-  * Use the Client secret from the Monzo app in step 2) for the API-Secret field
-4. Refresh the newly created account and login via Monzo's OAuth flow
+  * Put the downloaded `Monzo.lua` file in the shown folder
 
-### Usigned copy from the GitHub-Repository
+### Or unsigned copy from the GitHub-Repository
 
 * Copy the `Monzo.lua` file from src into MoneyMoney's Extension folder
-  * Open MoneyMoney.app
-	* Tap "Hilfe", "Show Database in Finder"
-	* Copy `Monzo.lua` into Extensions Folder
+  * Open MoneyMoney, tap *Hilfe* > *Zeige Datenbank*
+  * Put the downloaded `Monzo.lua` file in the shown folder
 * Disable Signature Check (Needs beta Version!)
   * Open MoneyMoney.app
 	* Enable Beta-Updates
@@ -47,7 +32,42 @@ Installation
 	* Go to "Extensions"-tab
 	* Allow unsigned extensions
 
-Feedback
----------------------
+### Create OAuth Client
+* Create a new Monzo app via https://developers.monzo.com/
+  * Create a new OAuth client via https://developers.monzo.com/apps/new
+  * Add `https://www.janmuennich.com/moneymoney-redirect/` in the *Redirect URLs* field (see [OAuth Redirect](#oauth-redirect) below)
+  * Add something to the other fields, e.g. `MyMoneyMoneyExtension` as Name
+  * Set *Confidentiality* to *Not Confidential*
+  * Tap *Submit*
 
-Feel free to create a Github [Ticket](https://github.com/diederich/moneymoney-monzo/issues/new) for feedback / questions.
+### Add an account in MoneyMoney
+  * Create a new account via *Konto* > *Konto hinzufügen*.
+  * Use the API-Client-ID from the Monzo app in step 2) for the API-Client-ID field
+  * Use the Client secret from the Monzo app in step 2) for the API-Secret field
+
+
+# OAuth Redirect
+
+MoneyMoney uses the custom URL scheme `moneymoney-app://oauth` to receive OAuth callbacks. However, Monzo's login confirmation email filters out non-HTTPS URLs, replacing them with a broken link. This means the magic link in the email will not work if `moneymoney-app://oauth` is used as the redirect URL directly.
+
+To work around this, the extension uses an HTTPS redirect URL that forwards to the `moneymoney-app://oauth` scheme. By default, this is set to `https://www.janmuennich.com/moneymoney-redirect/`. The redirect service simply passes through the query parameters (authorization code and state) without storing any data.
+
+If you prefer to host your own redirect, set up a simple script on your server and update the `REDIRECT_URI` variable at the top of `Monzo.lua`. For example, using PHP:
+
+```php
+<?php
+header('Location: moneymoney-app://oauth?' . $_SERVER['QUERY_STRING'], true, 302);
+exit;
+```
+
+Make sure to register the matching redirect URL in your Monzo OAuth client at https://developers.monzo.com/.
+
+
+# To Dos
+
+* Support Monzo's pods
+
+
+# Feedback
+
+Feel free to create a Github Issue for feedback / questions.

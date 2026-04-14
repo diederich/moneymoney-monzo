@@ -24,12 +24,10 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
---[[
-TODO
-* Add Monzo's `pods`
--- ]]
+-- TODO: Add Monzo's pots
 
 local BANK_CODE = "Monzo"
+local REDIRECT_URI = "https://www.janmuennich.com/moneymoney-redirect/"
 
 WebBanking {
   version = 0.91,
@@ -76,7 +74,7 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
         title = "Monzo API",
         challenge = "https://auth.monzo.com/" ..
             "?client_id=" .. MM.urlencode(clientId) ..
-            "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
+            "&redirect_uri=" .. MM.urlencode(REDIRECT_URI) ..
             "&response_type=code"
         -- The URL argument "state" will be automatically inserted by MoneyMoney.
       }
@@ -91,7 +89,7 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
     local postContent = "grant_type=authorization_code" ..
         "&client_id=" .. MM.urlencode(clientId) ..
         "&client_secret=" .. MM.urlencode(clientSecret) ..
-        "&redirect_uri=" .. MM.urlencode("moneymoney-app://oauth") ..
+        "&redirect_uri=" .. MM.urlencode(REDIRECT_URI) ..
         "&code=" .. MM.urlencode(authorizationCode)
     local postContentType = "application/x-www-form-urlencoded"
     local json = JSON(connection:request("POST", "https://api.monzo.com/oauth2/token", postContent, postContentType)):dictionary()
@@ -101,6 +99,20 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
 
     -- Not really necessary, but allows MoneyMoney to suggest the right country in the account settings as long as Monzo has no IBAN.
     LocalStorage.country = "gb"
+
+    -- Token is in pre_verification state until approved in the Monzo app.
+    return {
+      title = "Monzo",
+      challenge = "Please approve the login request in your Monzo app, then press Continue."
+    }
+  end
+
+  if step == 3 then
+    -- Verify that the token has been approved.
+    local whoami = queryPrivate("ping/whoami")
+    if not (whoami and whoami["authenticated"]) then
+      error("Login not approved. Please try again and approve in the Monzo app.")
+    end
   end
 end
 
