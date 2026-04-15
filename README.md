@@ -35,7 +35,7 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
 ### Create OAuth Client
 * Create a new Monzo app via https://developers.monzo.com/
   * Create a new OAuth client via https://developers.monzo.com/apps/new
-  * Add `https://www.janmuennich.com/moneymoney-redirect/` in the *Redirect URLs* field (see [OAuth Redirect](#oauth-redirect) below)
+  * Add `https://diederich.github.io/moneymoney-monzo/oauth-redirect/` in the *Redirect URLs* field (see [OAuth Redirect](#oauth-redirect) below)
   * Add something to the other fields, e.g. `MyMoneyMoneyExtension` as Name
   * Set *Confidentiality* to *Not Confidential*
   * Tap *Submit*
@@ -48,11 +48,15 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
 
 # OAuth Redirect
 
-MoneyMoney uses the custom URL scheme `moneymoney-app://oauth` to receive OAuth callbacks. However, Monzo's login confirmation email filters out non-HTTPS URLs, replacing them with a broken link. This means the magic link in the email will not work if `moneymoney-app://oauth` is used as the redirect URL directly.
+MoneyMoney uses the custom URL scheme `moneymoney-app://oauth` to receive OAuth callbacks. However, Monzo's login confirmation email filters out non-HTTPS URLs, replacing them with a broken link. To work around this, the extension uses an HTTPS bridge page that immediately forwards the callback back to MoneyMoney.
 
-To work around this, the extension uses an HTTPS redirect URL that forwards to the `moneymoney-app://oauth` scheme. By default, this is set to `https://www.janmuennich.com/moneymoney-redirect/`. The redirect service simply passes through the query parameters (authorization code and state) without storing any data.
+By default this bridge is hosted as a static GitHub Pages page from this repository at `https://diederich.github.io/moneymoney-monzo/oauth-redirect/`. The page is a single static HTML file ([`docs/oauth-redirect/index.html`](docs/oauth-redirect/index.html)) that forwards the browser to `moneymoney-app://oauth` with the original query string. No data is stored or sent to any third party.
 
-If you prefer to host your own redirect, set up a simple script on your server and update the `REDIRECT_URI` variable at the top of `Monzo.lua`. For example, using PHP:
+## Self-Hosting
+
+If you prefer to host your own redirect, update the `REDIRECT_URI` variable at the top of `Monzo.lua` and register the matching URL in your Monzo OAuth client at https://developers.monzo.com/.
+
+For a self-hosted static version, use [`docs/oauth-redirect/index.html`](docs/oauth-redirect/index.html) from this repository as a starting point. For a PHP-based redirect:
 
 ```php
 <?php
