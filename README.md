@@ -2,13 +2,11 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
 
 ![MoneyMoney screenshot with Monzo accounts](screenshots/monzo-accounts.png)
 
-
 # Requirements
 
-* [Monzo Account](https://monzo.com)
-* [MoneyMoney.app](http://moneymoney-app.com) (>= 2.3.5)
-* A Monzo OAuth client (see [Installation](#installation))
-
+- [Monzo Account](https://monzo.com)
+- [MoneyMoney.app](http://moneymoney-app.com) (>= 2.3.5)
+- A Monzo OAuth client (see [Installation](#installation))
 
 # Installation
 
@@ -16,35 +14,36 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
 
 ### Either signed copy from Extensions Page (preferred)
 
-* Download a signed version of this from https://moneymoney-app.com/extensions/
-  * Open MoneyMoney, tap *Hilfe* > *Zeige Datenbank*
-  * Put the downloaded `Monzo.lua` file in the shown folder
+- Download a signed version of this from https://moneymoney-app.com/extensions/
+  - Open MoneyMoney, tap _Hilfe_ > _Zeige Datenbank_
+  - Put the downloaded `Monzo.lua` file in the shown folder
 
 ### Or unsigned copy from the GitHub-Repository
 
-* Copy the `Monzo.lua` file from src into MoneyMoney's Extension folder
-  * Open MoneyMoney, tap *Hilfe* > *Zeige Datenbank*
-  * Put the downloaded `Monzo.lua` file in the shown folder
-* Disable Signature Check (Needs beta Version!)
-  * Open MoneyMoney.app
-	* Enable Beta-Updates
-	* Install update
-	* Go to "Extensions"-tab
-	* Allow unsigned extensions
+- Copy the `Monzo.lua` file from src into MoneyMoney's Extension folder
+  - Open MoneyMoney, tap _Hilfe_ > _Zeige Datenbank_
+  - Put the downloaded `Monzo.lua` file in the shown folder
+- Disable Signature Check (Needs beta Version!)
+  - Open MoneyMoney.app
+  - Enable Beta-Updates
+  - Install update
+  - Go to "Extensions"-tab
+  - Allow unsigned extensions
 
 ### Create OAuth Client
-* Create a new Monzo app via https://developers.monzo.com/
-  * Create a new OAuth client via https://developers.monzo.com/apps/new
-  * Add `https://diederich.github.io/moneymoney-monzo/oauth-redirect/` in the *Redirect URLs* field (see [OAuth Redirect](#oauth-redirect) below)
-  * Add something to the other fields, e.g. `MyMoneyMoneyExtension` as Name
-  * Set *Confidentiality* to *Not Confidential*
-  * Tap *Submit*
+
+- Create a new Monzo app via https://developers.monzo.com/
+  - Create a new OAuth client via https://developers.monzo.com/apps/new
+  - Add `https://diederich.github.io/moneymoney-monzo/oauth-redirect/` in the _Redirect URLs_ field (see [OAuth Redirect](#oauth-redirect) below)
+  - Add something to the other fields, e.g. `MyMoneyMoneyExtension` as Name
+  - Set _Confidentiality_ to _Not Confidential_
+  - Tap _Submit_
 
 ### Add an account in MoneyMoney
-  * Create a new account via *Konto* > *Konto hinzufügen*.
-  * Use the API-Client-ID from the Monzo app in step 2) for the API-Client-ID field
-  * Use the Client secret from the Monzo app in step 2) for the API-Secret field
 
+- Create a new account via _Konto_ > _Konto hinzufügen_.
+- Use the API-Client-ID from the Monzo app in step 2) for the API-Client-ID field
+- Use the Client secret from the Monzo app in step 2) for the API-Secret field
 
 # OAuth Redirect
 
@@ -65,7 +64,6 @@ exit;
 ```
 
 Make sure to register the matching redirect URL in your Monzo OAuth client at https://developers.monzo.com/.
-
 
 # Feedback
 
