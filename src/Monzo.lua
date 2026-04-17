@@ -318,6 +318,13 @@ function refreshPot(account)
 end
 
 function transactionForMonzoTransaction(transaction)
+  -- Skip cancelled/declined transactions that are also excluded from spending
+  -- (e.g. SEPA transfers that were put on hold and then cancelled) since there
+  -- is no appropriate way to display them in MoneyMoney apart from forever pending
+  if transaction.decline_reason and transaction.include_in_spending == false then
+    return nil
+  end
+
   -- Monzo leaves `settled` empty for incoming SEPA transfers, but they are
   -- already booked when `amount_is_pending` is false. Fall back to the ledger
   -- commit timestamp from metadata in that case.
