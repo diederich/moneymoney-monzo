@@ -28,7 +28,7 @@ local BANK_CODE = "Monzo"
 local REDIRECT_URI = "https://diederich.github.io/moneymoney-monzo/oauth-redirect/"
 
 WebBanking {
-  version = 1.00,
+  version = 1.01,
   url = "https://api.monzo.com",
   services = {BANK_CODE},
   description = string.format(MM.localizeText("Get balance and transactions for %s"), BANK_CODE),
@@ -318,7 +318,22 @@ function refreshPot(account)
 end
 
 function transactionForMonzoTransaction(transaction)
-  local isBooked = (not (transaction.settled == nil)) and not (apiDateStrToTimestamp(transaction.settled) == nil)
+  -- Skip cancelled/declined transactions that are also excluded from spending
+  -- (e.g. SEPA transfers that were put on hold and then cancelled) since there
+  -- is no appropriate way to display them in MoneyMoney apart from forever pending
+  if transaction.decline_reason and transaction.include_in_spending == false then
+    return nil
+  end
+
+  -- Monzo leaves `settled` empty for incoming SEPA transfers, but they are
+  -- already booked when `amount_is_pending` is false. Fall back to the ledger
+  -- commit timestamp from metadata in that case.
+  local settledTimestamp = apiDateStrToTimestamp(transaction.settled)
+  if settledTimestamp == nil and transaction.amount_is_pending == false
+      and transaction.metadata and transaction.metadata.ledger_committed_timestamp_latest then
+    settledTimestamp = apiDateStrToTimestamp(transaction.metadata.ledger_committed_timestamp_latest)
+  end
+  local isBooked = settledTimestamp ~= nil
 
   local purpose = purposeForTransaction(transaction)
   if not (transaction.local_currency == transaction.currency) then
@@ -339,7 +354,7 @@ function transactionForMonzoTransaction(transaction)
     -- Number bookingDate: Buchungstag; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
     bookingDate = apiDateStrToTimestamp(transaction.created),
     -- Number valueDate: Wertstellungsdatum; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
-    valueDate = apiDateStrToTimestamp(transaction.settled),
+    valueDate = settledTimestamp,
     -- String purpose: Verwendungszweck; Mehrere Zeilen können durch Zeilenumbrüche ("\n") getrennt werden.
     purpose = purpose,
     -- Number transactionCode: Geschäftsvorfallcode
