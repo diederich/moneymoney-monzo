@@ -337,7 +337,7 @@ function transactionForMonzoTransaction(transaction)
 
   local purpose = purposeForTransaction(transaction)
   if not (transaction.local_currency == transaction.currency) then
-    purpose = purpose .. "\nConverted from " .. formatCurrency(transaction.local_amount, transaction.local_currency)
+    purpose = purpose .. ", Converted from " .. formatCurrency(transaction.local_amount, transaction.local_currency)
   end
 
   local t = {
@@ -355,7 +355,7 @@ function transactionForMonzoTransaction(transaction)
     bookingDate = apiDateStrToTimestamp(transaction.created),
     -- Number valueDate: Wertstellungsdatum; Die Angabe erfolgt in Form eines POSIX-Zeitstempels.
     valueDate = settledTimestamp,
-    -- String purpose: Verwendungszweck; Mehrere Zeilen können durch Zeilenumbrüche ("\n") getrennt werden.
+    -- String purpose: Verwendungszweck
     purpose = purpose,
     -- Number transactionCode: Geschäftsvorfallcode
     -- Number textKeyExtension: Textschlüsselergänzung
