@@ -337,7 +337,7 @@ function transactionForMonzoTransaction(transaction)
 
   local purpose = purposeForTransaction(transaction)
   if not (transaction.local_currency == transaction.currency) then
-    purpose = purpose .. "\nConverted from " .. amountForMonzoAmount(transaction.local_amount) .. transaction.local_currency
+    purpose = purpose .. "\nConverted from " .. formatCurrency(transaction.local_amount, transaction.local_currency)
   end
 
   local t = {
@@ -380,6 +380,11 @@ function amountForMonzoAmount(amount)
     return 0
   end
   return amount / 100
+end
+
+-- formatCurrency(-2900, "USD") returns "-29.00 USD".
+function formatCurrency(amount, currency)
+  return string.format("%.2f %s", amountForMonzoAmount(amount), currency)
 end
 
 function purposeForTransaction(transaction)
