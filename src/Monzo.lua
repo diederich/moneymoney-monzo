@@ -66,6 +66,13 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
       authenticated = whoami and whoami["authenticated"]
     end
 
+    -- Try to refresh the access token using the refresh token (only available
+    -- for confidential OAuth clients).
+    if not authenticated and LocalStorage.refreshToken then
+      print("Refreshing access token.")
+      authenticated = refreshAccessToken()
+    end
+
     -- Obtain OAuth 2.0 authorization code from web browser.
     if not authenticated then
       return {
@@ -94,6 +101,8 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
     -- Store access token and expiration date.
     LocalStorage.accessToken = json["access_token"]
     LocalStorage.expiresAt = os.time() + json["expires_in"]
+    -- Store refresh token if provided (only for confidential clients).
+    LocalStorage.refreshToken = json["refresh_token"]
 
     -- Token is in pre_verification state until approved in the Monzo app.
     return {
@@ -109,6 +118,35 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
       error("Login not approved. Please try again and approve in the Monzo app.")
     end
   end
+end
+
+-- Exchanges the stored refresh token for a new access token.
+-- Returns true on success, false otherwise.
+function refreshAccessToken()
+  local postContent = "grant_type=refresh_token" ..
+      "&client_id=" .. MM.urlencode(clientId) ..
+      "&client_secret=" .. MM.urlencode(clientSecret) ..
+      "&refresh_token=" .. MM.urlencode(LocalStorage.refreshToken)
+  local postContentType = "application/x-www-form-urlencoded"
+  local response = connection:request("POST", "https://api.monzo.com/oauth2/token", postContent, postContentType)
+  local json = JSON(response):dictionary()
+
+  if not json["access_token"] then
+    -- Refresh failed; clear stored tokens to force a full re-auth.
+    print("Refresh token rejected: " .. (json["error"] or "unknown error"))
+    LocalStorage.accessToken = nil
+    LocalStorage.refreshToken = nil
+    LocalStorage.expiresAt = nil
+    return false
+  end
+
+  LocalStorage.accessToken = json["access_token"]
+  LocalStorage.expiresAt = os.time() + json["expires_in"]
+  -- Refresh tokens rotate: store the new one.
+  if json["refresh_token"] then
+    LocalStorage.refreshToken = json["refresh_token"]
+  end
+  return true
 end
 
 function ListAccounts(knownAccounts)

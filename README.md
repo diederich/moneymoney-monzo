@@ -36,7 +36,7 @@ Inofficial extension to fetch transactions from [Monzo](https://monzo.com) for [
   - Create a new OAuth client via https://developers.monzo.com/apps/new
   - Add `https://diederich.github.io/moneymoney-monzo/oauth-redirect/` in the _Redirect URLs_ field (see [OAuth Redirect](#oauth-redirect) below)
   - Add something to the other fields, e.g. `MyMoneyMoneyExtension` as Name
-  - Set _Confidentiality_ to _Not Confidential_
+  - Set _Confidentiality_ to _Confidential_ (see [Token Refresh](#token-refresh) below)
   - Tap _Submit_
 
 ### Add an account in MoneyMoney
@@ -64,6 +64,18 @@ exit;
 ```
 
 Make sure to register the matching redirect URL in your Monzo OAuth client at https://developers.monzo.com/.
+
+# Token Refresh
+
+Monzo access tokens expire after a few hours. To avoid having to manually re-authenticate every day, the extension uses OAuth refresh tokens to renew the access token automatically.
+
+Refresh tokens are only issued to **Confidential** OAuth clients. That's why the setup above sets _Confidentiality_ to _Confidential_. With this enabled:
+
+- The first time you connect, you'll go through the full OAuth flow (and approve in the Monzo app)
+- After that, the extension silently refreshes the access token whenever it expires
+- You only need to re-authenticate if you don't use the extension for a long time, or if Monzo invalidates the session
+
+Note: Monzo's definition of "Confidential" assumes the client secret is kept on a server, not on user devices. In this case the secret is stored in MoneyMoney's local database on your Mac. This is a pragmatic trade-off for a local desktop banking app — keep your Mac and MoneyMoney database secure.
 
 # Feedback
 
