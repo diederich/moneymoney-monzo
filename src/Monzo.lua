@@ -28,7 +28,7 @@ local BANK_CODE = "Monzo"
 local REDIRECT_URI = "https://diederich.github.io/moneymoney-monzo/oauth-redirect/"
 
 WebBanking {
-  version = 1.1,
+  version = 1.1.1,
   url = "https://api.monzo.com",
   services = {BANK_CODE},
   description = string.format(MM.localizeText("Get balance and transactions for %s"), BANK_CODE),
@@ -62,19 +62,22 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
     local authenticated = false
     if LocalStorage.accessToken and os.time() < LocalStorage.expiresAt then
       print("Validating access token.")
-      local whoami = queryPrivate("ping/whoami")
-      authenticated = whoami and whoami["authenticated"]
+      authenticated = hasAccountPermissions()
     end
 
     -- Try to refresh the access token using the refresh token (only available
-    -- for confidential OAuth clients).
+    -- for confidential OAuth clients). A refreshed token keeps the scope of the
+    -- session it came from, so verify permissions again afterwards.
     if not authenticated and LocalStorage.refreshToken then
       print("Refreshing access token.")
-      authenticated = refreshAccessToken()
+      authenticated = refreshAccessToken() and hasAccountPermissions()
     end
 
     -- Obtain OAuth 2.0 authorization code from web browser.
     if not authenticated then
+      -- Anything stored at this point is unusable; drop it so the flow starts
+      -- from scratch and Monzo sends a new approval request.
+      clearTokens()
       return {
         title = "Monzo API",
         challenge = "https://auth.monzo.com/" ..
@@ -113,11 +116,32 @@ function InitializeSession2(protocol, bankCode, step, credentials, interactive)
 
   if step == 3 then
     -- Verify that the token has been approved.
-    local whoami = queryPrivate("ping/whoami")
-    if not (whoami and whoami["authenticated"]) then
-      error("Login not approved. Please try again and approve in the Monzo app.")
+    if not hasAccountPermissions() then
+      -- Keeping an unapproved token would make every later session believe it is
+      -- already logged in, so discard it and force a fresh OAuth flow.
+      clearTokens()
+      error("Login not approved. Please try again and approve the request in the Monzo app before continuing.")
     end
   end
+end
+
+-- Checks whether the stored access token has been approved by the account owner.
+-- Monzo issues tokens with a "pre_verification" scope that stay unusable until
+-- the user approves the request in the Monzo app. Such tokens still pass
+-- "ping/whoami", so an endpoint that requires account permissions must be used.
+function hasAccountPermissions()
+  local response = queryPrivate("accounts")
+  if response and response.accounts then
+    return true
+  end
+  print("Access token lacks account permissions: " .. ((response and response.message) or "unknown error"))
+  return false
+end
+
+function clearTokens()
+  LocalStorage.accessToken = nil
+  LocalStorage.refreshToken = nil
+  LocalStorage.expiresAt = nil
 end
 
 -- Exchanges the stored refresh token for a new access token.
@@ -134,9 +158,7 @@ function refreshAccessToken()
   if not json["access_token"] then
     -- Refresh failed; clear stored tokens to force a full re-auth.
     print("Refresh token rejected: " .. (json["error"] or "unknown error"))
-    LocalStorage.accessToken = nil
-    LocalStorage.refreshToken = nil
-    LocalStorage.expiresAt = nil
+    clearTokens()
     return false
   end
 
